@@ -215,7 +215,7 @@ class DFA:
         if ((len(subtract_L1L2_final_states) != 0)
                 and (len(subtract_L2L1_final_states) != 0)):
             print('L1 and L2 are the Seperated')
-
+    #minimizing
     def minimizing(self):
         #مرحله اول : جدول
         pairs = []# لیست شامل تمام ترکیب استیت های ممکن
