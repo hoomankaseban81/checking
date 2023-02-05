@@ -116,3 +116,128 @@ class DFA:
             L_supplement = DFA(self.states, self.alphabet, self.initial_state,
                                new_final, self.transition_function)
             return L_supplement
+
+    def op(self, L2):
+        #ترکیب
+        transition_function = {}
+        initial = self.initial_state + L2.initial_state
+        combined_states = [initial]#لیست استیت های ترکیب شده با مقدار پیشفرض استیت های شروع هر زبان
+        start = 0  #{'CP', 'CQ', 'BQ', 'AP', 'AR', 'CR'}
+        been_saw = []
+        while (start < len(combined_states)):# حلقه تا زمانی که به خانه ای  از ارایه اشاره کنیم که وجود داشته باشد
+            #روش کار اینست که از استیت ترکیبی ابتدایی شروع کرده و تنها روی استیت هایی کار میکنیم که به آنها دسترسی داشته ایم 
+            if (combined_states[start] in been_saw):#چون ممکن است یک ترکیب به خودش برود . بنابراین در ارایه اضافه میشود . لذا چک میکنیم که تکراری ها را درنظر نگیریم
+                start += 1
+                continue
+            else:
+                states = combined_states[start]  #استیت کنونی
+                been_saw.append(combined_states[start])
+                current_state_1 = states[0]
+                current_state_2 = states[1]
+                state_value = {}# دیکشنری داخلی تابع انتقال است
+                for symbols in self.alphabet:
+                    #به ازای هر حرف الفبا چک میکنیم که هر بخش از استیت الحاقی به کجا میرود
+                    next_state_1 = self.transition_function[current_state_1][symbols]
+                    next_state_2 = L2.transition_function[current_state_2][symbols]
+                    next_state = next_state_1 + next_state_2# استیت ترکیبی بعدی شامل استیت بعدی هر بخش استیت ترکیبی فعلی است
+                    combined_states.append(next_state)#اضافه کردن استیت ترکیبی به لیست استیت های ترکیبی
+                    state_value.update({symbols: next_state})#ساخت دیکشنری داخلی تابع انتقال
+                transition_function.update({states: state_value})#ساخت تابع انتقال برای استیت فعلی ترکیبی
+                start += 1
+        combined_states = list(set(combined_states))# میدانیم که در لیست ممکن است استیت های تکراری باشند . لذا باتبدیل به مجموعه آنها را حذف میکنیم و سپس دوباره تبدیل به لیست میکنیم
+
+        # استیت های پذیرش
+        union_final_states = []#استیت های پذیرش اجتماع
+        intersect_final_states = []#استیت های پذیرش اشتراک
+        subtract_L1L2_final_states = []#استیت های پذیرش زبان اول منهای زبان دوم
+        subtract_L2L1_final_states = []
+        for states in combined_states:
+            # هر استیت در لیست استیت های ترکیبی را انتخاب کرده و براساس قوانین استیت های پذیرش را مشخص میکنیم در هر بخش
+            current_state_1 = states[0]
+            current_state_2 = states[1]
+            #اجتماع
+            if ((current_state_1 in self.final_states)
+                    or (current_state_2 in L2.final_states)):
+                union_final_states.append(states)
+
+            #اشتراک
+            if ((current_state_1 in self.final_states)
+                    and (current_state_2 in L2.final_states)):
+                intersect_final_states.append(states)
+
+            #تفاضل یک از دو
+            if ((current_state_1 in self.final_states)
+                    and not (current_state_2 in L2.final_states)):
+                subtract_L1L2_final_states.append(states)
+
+            #تفاضل دو از یک
+            if (not (current_state_1 in self.final_states)
+                    and (current_state_2 in L2.final_states)):
+                subtract_L2L1_final_states.append(states)
+
+        #اجتماع
+        #print(union_final_states)
+        union = [
+            combined_states, L2.alphabet, initial, union_final_states,
+            transition_function
+        ]
+        print('This is the DFA for Union of Languages \n %s' % (union))
+
+        #اشتراک
+        intersection = [
+            combined_states, L2.alphabet, initial, intersect_final_states,
+            transition_function
+        ]
+        print('\n\nThis is the DFA for Intersection of Languages \n %s' %
+              (intersection))
+
+        #تفاضل یک از دو
+        subtraction_l1l2 = [
+            combined_states, L2.alphabet, initial, subtract_L1L2_final_states,
+            transition_function
+        ]
+        print('\n\nThis is the DFA for L1-L2 \n %s' % (subtraction_l1l2))
+        if (len(subtract_L1L2_final_states) == 0):
+            print('L1 is a subset of L2')
+
+        #تفاضل دو از یک
+        subtraction_l2l1 = [
+            combined_states, L2.alphabet, initial, subtract_L2L1_final_states,
+            transition_function
+        ]
+        print('\n\nThis is the DFA for L2-L1 \n %s' % (subtraction_l2l1))
+        if (len(subtract_L2L1_final_states) == 0):
+            print('L2 is a subset of L1')
+
+        if ((len(subtract_L1L2_final_states) == 0)
+                and (len(subtract_L2L1_final_states) == 0)):
+            print('L1 and L2 are the Equals')
+        if ((len(subtract_L1L2_final_states) != 0)
+                and (len(subtract_L2L1_final_states) != 0)):
+            print('L1 and L2 are the Seperated')
+
+    def minimizing(self):
+        #مرحله اول : جدول
+        pairs = []# لیست شامل تمام ترکیب استیت های ممکن
+        for i in self.states:
+            for j in self.states:
+                if ((i != j) and not (j + i in pairs)):
+                    pairs.append(i + j)
+        marked_pairs = []#استیت های علامت گذاری شده
+        step = 1
+        while (True):
+            end = 0# متغیر اند برای اینست که زمان متوقف شدن حلقه را بفهمیم
+            #زمانی حلقه متوقف میشود که در یک گام کامل ما هیچ استیتی را علامت گذاری نکنیم
+            # گام اول
+            # در صورتی استیت ها را علامت گذاری کن که یکی پذیرش  و دیگری نباشد
+            if (step == 1):
+                for pair in pairs:
+                    current_state_1 = pair[0]
+                    current_state_2 = pair[1]
+                    if ((current_state_1 in self.final_states
+                         and current_state_2 not in self.final_states)
+                            or (current_state_1 not in self.final_states
+                                and current_state_2 in self.final_states)):
+                        marked_pairs.append(pair)
+                        end += 1
+                step += 1# بعد از پایان گام اول مقدار استپ را یک عدد زیاد کنیم که در مرحله بعدی وایل به استپ دو بریم
